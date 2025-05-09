@@ -50,7 +50,9 @@ export default [
       "@typescript-eslint/no-unnecessary-type-assertion": "off",
       "@typescript-eslint/no-unsafe-member-access": "off",
       "@typescript-eslint/no-empty-object-type": "off",
-      "@typescript-eslint/no-unsafe-return": "off"
+      "@typescript-eslint/no-unsafe-return": "off",
+      "@typescript-eslint/prefer-regexp-exec": "off",
+      "react/prop-types": "off"
     },
     settings: {
       react: {

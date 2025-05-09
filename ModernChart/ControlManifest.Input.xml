@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <manifest>
-  <control namespace="GorgonUK" constructor="ModernChart" version="0.0.13" display-name-key="ModernChart" description-key="ModernChart description" control-type="virtual">
+  <control namespace="GorgonUK" constructor="ModernChart" version="0.0.15" display-name-key="ModernChart" description-key="ModernChart description" control-type="virtual">
     <external-service-usage enabled="false">
     </external-service-usage>
     <data-set name="chartDataset" display-name-key="Chart_Dataset">
