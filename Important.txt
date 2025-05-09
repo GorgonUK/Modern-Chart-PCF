@@ -1,0 +1,165 @@
+replace pcf-scripts/webpackConfig.js with this:
+
+"use strict";
+// Copyright (C) Microsoft Corporation. All rights reserved.
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getWebpackConfig = exports.generateStub = exports.getNamespaceStub = void 0;
+const fs = require("node:fs");
+const path = require("node:path");
+const webpack = require("webpack");
+const webpack_merge_1 = require("webpack-merge");
+const constants = require("./constants");
+const featureManager_1 = require("./featureManager");
+const platformLibrariesHandler_1 = require("./platformLibrariesHandler");
+// Append a stub to webpack bundle to prevent overwriting global variables
+// If different controls are using the same namespace, webpack will keep redeclaring
+// the namespace as global variables. As a result, only of one the controls can be called.
+// The inserted stub checks whether the namespace already exists and uses a temporary variable
+// to hold the control's constructor.
+function getNamespaceStub(namespace, constructor) {
+    const splitNamespace = namespace.split(".");
+    let stub = `\tvar ${splitNamespace[0]} = ${splitNamespace[0]} || {};\n`;
+    for (let i = 1; i < splitNamespace.length; i++) {
+        const littleStub = `${splitNamespace.slice(0, i + 1).join(".")}`;
+        stub += `\t${littleStub} = ${littleStub} || {};\n`;
+    }
+    stub = stub + `\t${namespace}.${constructor} = ${constants.TEMP_NAMESPACE}.${constructor};\n` + `\t${constants.TEMP_NAMESPACE} = undefined;\n`;
+    return stub;
+}
+exports.getNamespaceStub = getNamespaceStub;
+// Use registration function if exists, else fall back to the stub that uses the namespace as a global variable
+function generateStub(namespace, constructor) {
+    return ("\nif (window.ComponentFramework && window.ComponentFramework.registerControl) {\n" +
+        `\tComponentFramework.registerControl('${namespace}.${constructor}', ${constants.TEMP_NAMESPACE}.${constructor});\n` +
+        `} else {\n${getNamespaceStub(namespace, constructor)}}`);
+}
+exports.generateStub = generateStub;
+function getWebpackConfig(control, controlOutputDir, buildMode, watchFlag) {
+    const entryPoint = path.resolve(control.getControlPath(), control.getCodeRelativePath());
+    let customConfig = {};
+    const customConfigPath = path.resolve(control.getControlPath(), "..", constants.WEBPACK_CUSTOMIZATION_FILE_NAME);
+    const featureMgr = new featureManager_1.FeatureManager();
+    if (featureMgr.isFeatureEnabled("pcfAllowCustomWebpack") && fs.existsSync(customConfigPath)) {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        customConfig = require(customConfigPath);
+    }
+    const allowProjectReferences = featureMgr.isFeatureEnabled("pcfAllowProjectReferences");
+    const babelLoader = getBabelLoader(buildMode === "production" ? true : "auto");
+    const oobConfig = {
+        // `production` mode will minify, while `development` will optimize for debugging.
+        mode: buildMode,
+        watch: watchFlag,
+        watchOptions: {
+            aggregateTimeout: 500,
+        },
+        // Tells webpack where to start walking the graph of dependencies
+        entry: entryPoint,
+        output: {
+            // This library value control what global variable the output control is placed in.
+            library: constants.TEMP_NAMESPACE,
+            pathinfo: true,
+            filename: constants.BUNDLE_NAME,
+            path: controlOutputDir,
+        },
+        resolve: {
+            // Tell webpack which extensions to try when it is looking for a file.
+            extensions: [".ts", ".tsx", ".js", ".jsx", ".svg"],
+        },
+        module: {
+            rules: [
+                {
+                    // Tells webpack how to load files with TS or TSX extensions.
+                    test: /\.(ts|tsx)$/,
+                    use: [
+                        babelLoader,
+                        {
+                            loader: require.resolve("ts-loader"),
+                            options: {
+                                allowTsInNodeModules: true,
+                                projectReferences: allowProjectReferences,
+                            },
+                        },
+                    ],
+                    exclude: (tsPath) => {
+                        // PNPM places relative imports in `node_modules`.
+                        // These files should NOT be excluded from the loader.
+                        // Format: node_modules/.pnpm/.../some/path/...@file+...
+                        if (/node_modules.\.pnpm.+@file\+/.test(tsPath)) {
+                            return false;
+                        }
+                        return /node_modules/.test(tsPath);
+                    },
+                },
+                {
+                    // Tell webpack how to handle JS or JSX files
+                    test: /\.(js|jsx)$/,
+                    use: [babelLoader],
+                },
+                {
+                    test: /\.(css|scss)$/,
+                    use: [
+                        "style-loader",
+                        { loader: "css-loader",  options: { importLoaders: 1 } },
+                        {
+                          loader: "postcss-loader",
+                          options: {
+                            postcssOptions: {
+                              plugins: [require("tailwindcss"), require("autoprefixer")]
+                            }
+                          }
+                        },
+                        "sass-loader"
+                      ]
+                },
+                {
+                    test: /\.svg$/,
+                    use: ["@svgr/webpack"],
+                },
+            ],
+        },
+        plugins: [
+            new webpack.optimize.LimitChunkCountPlugin({
+                // prevent creating split bundles, since the PCF runtime cannot handle chunked bundles
+                // neither does the control manifest and our tooling have support to build and package chunked bundles (e.g. no SoPa support)
+                maxChunks: 1,
+            }),
+        ],
+    };
+    if (featureMgr.isFeatureEnabled("pcfReactControls") && (0, platformLibrariesHandler_1.hasPlatformLibs)(control)) {
+        const platformLibrariesHandler = new platformLibrariesHandler_1.PlatformLibrariesHandler();
+        const externalsForPlatformLibs = platformLibrariesHandler.getLatestVersions(control);
+        oobConfig.externals = externalsForPlatformLibs;
+    }
+    return (0, webpack_merge_1.merge)(oobConfig, customConfig);
+}
+exports.getWebpackConfig = getWebpackConfig;
+// Some babel plugins to support modern JS and TypeScript.
+const babelPlugins = [
+    [require.resolve("@babel/plugin-proposal-decorators"), { legacy: true }],
+    require.resolve("@babel/plugin-transform-class-properties"),
+    require.resolve("@babel/plugin-transform-object-rest-spread"),
+    require.resolve("@babel/plugin-syntax-dynamic-import"),
+    require.resolve("@babel/plugin-transform-nullish-coalescing-operator"),
+];
+// Config for babel to tell it about which browsers we are targeting.
+const babelPresetEnv = [
+    require.resolve("@babel/preset-env"),
+    {
+        targets: {
+            esmodules: true,
+        },
+    },
+];
+function getBabelLoader(compact = "auto") {
+    return {
+        loader: require.resolve("babel-loader"),
+        options: {
+            sourceType: "unambiguous",
+            presets: [babelPresetEnv, [require.resolve("@babel/preset-react")]],
+            plugins: babelPlugins,
+            compact,
+        },
+    };
+}
+
+//# sourceMappingURL=webpackConfig.js.map

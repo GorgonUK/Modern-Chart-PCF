@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<manifest>
+  <control namespace="GorgonUK" constructor="ModernChart" version="0.0.13" display-name-key="ModernChart" description-key="ModernChart description" control-type="virtual">
+    <external-service-usage enabled="false">
+    </external-service-usage>
+    <data-set name="chartDataset" display-name-key="Chart_Dataset">
+    </data-set>
+    <property name="categoryField" display-name-key="Category field (x-axis)" of-type="SingleLine.Text" usage="input" />
+    <property name="seriesFields" display-name-key="Series fields (comma-sep.)" of-type="SingleLine.Text" usage="input" />
+    <property name="enableSmoothBars" display-name-key="Enable smooth Bars?" description-key="Would you like the bars to be smooth? Simply provide Yes/No" of-type="TwoOptions" usage="input" required="false" default-value="true" />
+    <property name="displayChartHeader" display-name-key="Display Chart Header?" description-key="Display Chart Header? Simply provide Yes/No" of-type="TwoOptions" usage="input" required="false" default-value="true" />
+    <property name="displayHeaderTotals" display-name-key="Display Header Totals?" description-key="Display Header Totals? Simply provide Yes/No" of-type="TwoOptions" usage="input" required="false" default-value="true" />
+    <property name="chartHeight" display-name-key="Chart Height (pixels)" description-key="Chart Height" of-type="SingleLine.Text" usage="input" required="false" />
+    <property name="chartTitle" display-name-key="Chart Title" description-key="Chart Title" of-type="SingleLine.Text" usage="input" required="false" />
+    <property name="chartDescription" display-name-key="chart Description" description-key="chart Description" of-type="SingleLine.Text" usage="input" required="false" />
+    <resources>
+      <code path="index.ts" order="1" />
+      <platform-library name="React" version="16.14.0" />
+      <platform-library name="Fluent" version="9.46.2" />
+      <!-- <css path="styles/globals.scss" order="1" />  -->
+    </resources>
+    <feature-usage>
+      <uses-feature name="WebAPI" required="false" />
+      <uses-feature name="WebAPI.retrieveMultipleRecords" required="false" />
+    </feature-usage>
+  </control>
+</manifest>
