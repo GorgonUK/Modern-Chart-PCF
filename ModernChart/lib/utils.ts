@@ -37,6 +37,18 @@ export function getNumberParameter(context: ComponentFramework.Context<IInputs>,
   return Number(getParameterValue<number>(context, parameter)) || 0;
 }
 
+export function getEnumParameter<T extends { [key: string]: string | number }>(
+  context: ComponentFramework.Context<IInputs>,
+  parameter: keyof IInputs,
+  enumObj: T
+): keyof T {
+  const value = Number(getParameterValue<number>(context, parameter));
+  const keys = Object.keys(enumObj).filter(k => isNaN(Number(k)));
+  const key = keys.find(k => enumObj[k] === value);
+  return (key ?? keys[0]) as keyof T;
+}
+
+
 export const numericTypes = ["Decimal", "Double", "Integer", "Money", "BigInt"];
 
 export const isNumeric = (c: DataSetInterfaces.Column) => numericTypes.includes(c.dataType);
@@ -50,7 +62,11 @@ const symbolPreferredLocales: Record<string, string[]> = {
   "₩": ["ko-KR"],
 };
 
-export function inferLocaleFromSymbol(symbol: string): string {
+export function inferLocaleFromSymbol(symbol: string, localeOverride?: string): string {
+  if (localeOverride && typeof localeOverride === "string") {
+    return localeOverride;
+  }
+
   const matchingLocales: string[] = [];
 
   for (const locale of locales) {

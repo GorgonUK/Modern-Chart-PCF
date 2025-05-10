@@ -1,12 +1,15 @@
 import * as React from "react";
-import { ChartHeader, WideBarChart } from "../components/common/charts";
+import { AreaChartComponent, ChartHeader, LineChartComponent, PieChartComponent, WideBarChart } from "../components/common/charts";
 import { ChartConfig } from "../components/common/shadcn/ui/chart";
 import { IInputs } from "../generated/ManifestTypes";
-import { getBooleanParameter, getStringParameter, inferLocaleFromSymbol } from "../lib/utils";
-import { ChartOptions } from "../types/chartOptions";
+import { getBooleanParameter, getEnumParameter, getNumberParameter, getStringParameter, inferLocaleFromSymbol } from "../lib/utils";
+import { ChartOptions } from "../common/types/chartOptions";
 import { Container } from "./styles";
 import DataSetInterfaces = ComponentFramework.PropertyHelper.DataSetApi;
 import dayjs from "dayjs";
+import getSymbolFromCurrency from "currency-symbol-map";
+import { getCurrency } from "locale-currency";
+import { ChartType } from "../common/consts/chartType";
 type DataSet = ComponentFramework.PropertyTypes.DataSet;
 
 interface ChartProps {
@@ -43,7 +46,10 @@ export class Chart extends React.Component<ChartProps> {
     (seriesCsv ? seriesCsv.split(",").map(s => s.trim()).includes(c.name)
       : isNumeric(c)));
 
-    const palette = ["#2563eb", "#60a5fa", "#22d3ee", "#4ade80"];
+    const paletteParam = getStringParameter(this.props.context, "paletteOverride")?.trim();
+    const palette = paletteParam
+      ? paletteParam.split(",").map(c => c.trim()).filter(c => /^#?[0-9A-Fa-f]{6}$/.test(c))
+      : ["#2563eb", "#60a5fa", "#22d3ee", "#4ade80"];
 
     const chartConfig: ChartConfig = Object.fromEntries(
       seriesCols.map((c, i) => [
@@ -92,47 +98,71 @@ export class Chart extends React.Component<ChartProps> {
 
   render() {
     const { context } = this.props;
+    const chartType = getEnumParameter(context, "chartType", ChartType);
 
     // Control is loading
     if (this.isLoading()) return <div>Loading…</div>;
 
     // Build data
-    const { loading, chartData, chartConfig, categoryCol } = this.buildData();
+    const { chartData, chartConfig } = this.buildData();
 
     //No data found in dataset
     if (!chartData?.length) return <div>No data</div>;
 
     const chartHeaderOptions: ChartOptions = {
-      headerTotals: getBooleanParameter(context, "displayHeaderTotals")
+      headerTotals: getBooleanParameter(context, "displayHeaderTotals"),
+      textColor: getStringParameter(context, "textColor"),
     };
     const chartBodyOptions: ChartOptions = {
       chartHeight: getStringParameter(context, "chartHeight"),
-      smoothBars: getBooleanParameter(context, "enableSmoothBars")
+      smoothBars: getBooleanParameter(context, "enableSmoothBars"),
+      textColor: getStringParameter(context, "textColor"),
+      isCanvas: getBooleanParameter(context, "isCanvas")
     };
 
     const totals: Record<string, { value: number; formatted?: string }> = {};
-
     Object.keys(chartConfig).forEach((k) => {
       const value = chartData.reduce((n, r) => n + (r[k] ?? 0), 0);
       let formatted: string | undefined;
 
       if (chartConfig[k].dataType === "Currency") {
-        const sample = chartData.find(r => r[`__formatted__${k}`])?.[`__formatted__${k}`] as string;
-        const symbolMatch = sample?.match(/^[^\d\s.,]+/)?.[0];
-        const symbol = symbolMatch ?? "¤";
+        const localeOverride = getStringParameter(context, "localeOverride")?.trim();
+        const locale = localeOverride || "en-GB";
+        const isCanvas = getBooleanParameter(context, "isCanvas");
 
-        const inferredLocale = inferLocaleFromSymbol(symbol);
+        let currency = "GBP"; // default fallback
+        let symbol = "¤";
 
-        const isSuffix = sample?.trim().endsWith(symbol) ?? false;
-        const formattedValue = value.toLocaleString(inferredLocale);
+        if (!isCanvas) {
+          const sampleRaw = chartData.find(r => r[`__formatted__${k}`])?.[`__formatted__${k}`];
+          const sample = typeof sampleRaw === "string" ? sampleRaw : "";
+          const match = sample.match(/^[^\d\s.,]+/)?.[0];
+          symbol = match ?? symbol;
+        } else {
+          const inferredCurrency = getCurrency(locale);
+          if (inferredCurrency) {
+            currency = inferredCurrency;
+            const inferredSymbol = getSymbolFromCurrency(currency);
+            if (inferredSymbol) symbol = inferredSymbol;
+          }
+        }
 
-        formatted = isSuffix
-          ? `${formattedValue} ${symbol}`
-          : `${symbol}${formattedValue}`;
+        const formatter = new Intl.NumberFormat(locale, {
+          style: "currency",
+          currency,
+          currencyDisplay: "symbol",
+          maximumFractionDigits: 2,
+        });
+
+        formatted = formatter.format(value);
+        // store formatter in chartConfig
+        chartConfig[k].formatter = formatter;
+        chartConfig[k].isCanvas = isCanvas;
       }
 
       totals[k] = { value, formatted };
     });
+
 
     return (
       <Container>
@@ -145,11 +175,12 @@ export class Chart extends React.Component<ChartProps> {
             chartOptions={chartHeaderOptions}
           />
         )}
-        <WideBarChart
-          data={chartData}
-          chartConfig={chartConfig}
-          chartOptions={chartBodyOptions}
-        />
+        {{
+          Bar: <WideBarChart data={chartData} chartConfig={chartConfig} chartOptions={chartBodyOptions} />,
+          Line: <LineChartComponent data={chartData} chartConfig={chartConfig} chartOptions={chartBodyOptions} />,
+          Area: <AreaChartComponent data={chartData} chartConfig={chartConfig} chartOptions={chartBodyOptions} />,
+          Pie: <PieChartComponent data={chartData} chartConfig={chartConfig} chartOptions={chartBodyOptions} />,
+        }[chartType]}
       </Container>
     );
   }

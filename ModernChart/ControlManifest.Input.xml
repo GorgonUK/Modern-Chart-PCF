@@ -1,18 +1,28 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <manifest>
-  <control namespace="GorgonUK" constructor="ModernChart" version="0.0.15" display-name-key="ModernChart" description-key="ModernChart description" control-type="virtual">
+  <control namespace="GorgonUK" constructor="ModernChart" version="0.0.23" display-name-key="ModernChart" description-key="ModernChart description" control-type="virtual">
     <external-service-usage enabled="false">
     </external-service-usage>
     <data-set name="chartDataset" display-name-key="Chart_Dataset">
     </data-set>
-    <property name="categoryField" display-name-key="Category field (x-axis)" of-type="SingleLine.Text" usage="input" />
-    <property name="seriesFields" display-name-key="Series fields (comma-sep.)" of-type="SingleLine.Text" usage="input" />
-    <property name="enableSmoothBars" display-name-key="Enable smooth Bars?" description-key="Would you like the bars to be smooth? Simply provide Yes/No" of-type="TwoOptions" usage="input" required="false" default-value="true" />
-    <property name="displayChartHeader" display-name-key="Display Chart Header?" description-key="Display Chart Header? Simply provide Yes/No" of-type="TwoOptions" usage="input" required="false" default-value="true" />
-    <property name="displayHeaderTotals" display-name-key="Display Header Totals?" description-key="Display Header Totals? Simply provide Yes/No" of-type="TwoOptions" usage="input" required="false" default-value="true" />
-    <property name="chartHeight" display-name-key="Chart Height (pixels)" description-key="Chart Height" of-type="SingleLine.Text" usage="input" required="false" />
     <property name="chartTitle" display-name-key="Chart Title" description-key="Chart Title" of-type="SingleLine.Text" usage="input" required="false" />
     <property name="chartDescription" display-name-key="chart Description" description-key="chart Description" of-type="SingleLine.Text" usage="input" required="false" />
+    <property name="categoryField" display-name-key="Category field (x-axis)" of-type="SingleLine.Text" usage="input" />
+    <property name="seriesFields" display-name-key="Series fields (comma-sep.)" of-type="SingleLine.Text" usage="input" />
+    <property name="chartHeight" display-name-key="Chart Height (pixels)" description-key="Chart Height" of-type="SingleLine.Text" usage="input" required="false" />
+    <property name="displayChartHeader" display-name-key="Display Chart Header?" description-key="Display Chart Header? Simply provide Yes/No" of-type="TwoOptions" usage="input" required="false" default-value="true" />
+    <property name="displayHeaderTotals" display-name-key="Display Header Totals?" description-key="Display Header Totals? Simply provide Yes/No" of-type="TwoOptions" usage="input" required="false" default-value="true" />
+    <property name="enableSmoothBars" display-name-key="Enable smooth Bars?" description-key="Would you like the bars to be smooth? Simply provide Yes/No" of-type="TwoOptions" usage="input" required="false" default-value="true" />
+    <property name="textColor" display-name-key="Text Color" description-key="Text Color" of-type="SingleLine.Text" usage="input" required="false" />
+    <property name="chartType" display-name-key="Chart Type" description-key="Select the chart type to render" of-type="Enum" usage="input" required="false" default-value="0">
+      <value name="Bar" display-name-key="Bar Chart">0</value>
+      <value name="Line" display-name-key="Line Chart">1</value>
+      <value name="Area" display-name-key="Area Chart">2</value>
+      <value name="Pie" display-name-key="Pie Chart">3</value>
+    </property>
+    <property name="localeOverride" display-name-key="Locale override (i.e en-GB)" description-key="Locale override (i.e en-GB)" of-type="SingleLine.Text" usage="input" required="false" />
+    <property name="paletteOverride" display-name-key="Palette Override" description-key="Comma-separated list of hex colours" of-type="SingleLine.Text" usage="input" required="false" />
+    <property name="isCanvas" display-name-key="Is canvas" description-key="Is canvas" of-type="TwoOptions" usage="input" required="false" default-value="false" pfx-default-value="true" hidden="true" />
     <resources>
       <code path="index.ts" order="1" />
       <platform-library name="React" version="16.14.0" />
