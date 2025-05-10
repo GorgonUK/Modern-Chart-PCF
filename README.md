@@ -2,6 +2,7 @@
 
 - **Optimized for Canvas and Model-Driven Apps**
 - **Responsive**
+- **4 different chart options**
 
 This Power Apps PCF control renders dynamic, responsive charts using Recharts and ShadCN styling. It supports multiple chart types—Bar, Line, Area, and Pie—and includes configuration options for series, category field, text color, chart height, header visibility, locale formatting, and palette customization. Designed for both Model-driven and Canvas apps, it intelligently formats numeric and currency values based on the environment.
 
