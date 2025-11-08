@@ -89,10 +89,8 @@ export function LineChartComponent({ data, chartConfig, chartOptions }: Props) {
                             }}
                             labelFormatter={(_, payload) => {
                                 const raw = payload?.[0]?.payload?.date;
-                                const date = raw instanceof Date ? raw : new Date(raw);
-                                return isNaN(date.getTime())
-                                    ? "Invalid date"
-                                    : dayjs(date).format("MMM D, YYYY");
+                                const d = dayjs(raw);
+                                return d.isValid() ? d.format("MMM D, YYYY") : "Invalid date";
                             }}
                         />
                     }

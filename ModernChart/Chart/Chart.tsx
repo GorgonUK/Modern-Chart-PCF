@@ -7,10 +7,13 @@ import { ChartOptions } from "../common/types/chartOptions";
 import { Container } from "./styles";
 import DataSetInterfaces = ComponentFramework.PropertyHelper.DataSetApi;
 import dayjs from "dayjs";
+import customParseFormat from "dayjs/plugin/customParseFormat";
 import getSymbolFromCurrency from "currency-symbol-map";
 import { getCurrency } from "locale-currency";
 import { ChartType } from "../common/consts/chartType";
 type DataSet = ComponentFramework.PropertyTypes.DataSet;
+
+dayjs.extend(customParseFormat);
 
 interface ChartProps {
   context: ComponentFramework.Context<IInputs>;
@@ -33,14 +36,23 @@ export class Chart extends React.Component<ChartProps> {
   componentDidUpdate() { this.schedulePoll(); }
   componentWillUnmount() { clearTimeout(this.poll); }
   private buildData() {
-    const catName = getStringParameter(this.props.context, "categoryField")?.trim()?.toLowerCase();
+    const catInput = getStringParameter(this.props.context, "categoryField")?.trim();
     const seriesCsv = getStringParameter(this.props.context, "seriesFields")?.trim();
     const ds = this.props.context.parameters.chartDataset as DataSet;
     const numericTypes = ["Decimal", "Double", "Integer", "Money", "BigInt"];
     const isNumeric = (c: DataSetInterfaces.Column) => numericTypes.includes(c.dataType);
-    const cols = ds.columns;
-    const categoryCol = cols.find(c =>
-      (catName ? c.name === catName : !isNumeric(c))) ?? cols[0];
+    const cols = ds.columns || [];
+
+    // Choose category column (case-insensitive) with robust fallbacks
+    const categoryCol =
+      cols.find(c => (catInput ? c.name?.toLowerCase() === catInput.toLowerCase() : !isNumeric(c))) ||
+      cols.find(c => !isNumeric(c)) ||
+      cols[0];
+
+    // If there are no columns at all, short-circuit safely
+    if (!categoryCol) {
+      return { loading: false, chartData: [], chartConfig: {} as ChartConfig, categoryCol: "" };
+    }
 
     const seriesCols = cols.filter(c =>
     (seriesCsv ? seriesCsv.split(",").map(s => s.trim()).includes(c.name)
@@ -71,8 +83,13 @@ export class Chart extends React.Component<ChartProps> {
       if (raw instanceof Date) {
         dateVal = raw;
       } else if (typeof raw === "string") {
-        const parsed = dayjs(raw, ["YYYY-MM-DD", "YYYY-MM-DDTHH:mm:ssZ"], true);
-        dateVal = parsed.isValid() ? parsed.toDate() : new Date(raw);
+        // Strictly parse common ISO-like inputs without relying on native Date parsing
+        // 1) Date only: YYYY-MM-DD
+        // 2) Naive datetime (no zone): YYYY-MM-DDTHH:mm:ss
+        // 3) Datetime with timezone: YYYY-MM-DDTHH:mm:ssZ or offset
+        const parsed =
+          dayjs(raw, ["YYYY-MM-DD", "YYYY-MM-DDTHH:mm:ss", "YYYY-MM-DDTHH:mm:ssZ"], true);
+        dateVal = parsed.isValid() ? parsed.toDate() : dayjs(String(raw)).toDate();
       } else if (typeof raw === "number") {
         dateVal = raw > 2_000_000_000
           ? new Date(raw)
