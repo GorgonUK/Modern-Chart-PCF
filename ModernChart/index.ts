@@ -11,7 +11,7 @@ export class ModernChart implements ComponentFramework.ReactControl<IInputs, IOu
     context: ComponentFramework.Context<IInputs>,
     notifyOutputChanged: () => void
   ): void {
-    console.log("Modern Chart 0.1 Initialised")
+    console.log("Modern Chart 0.2 Initialised")
     this.notifyOutputChanged = notifyOutputChanged;
   }
 
